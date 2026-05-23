@@ -1165,11 +1165,20 @@
         }
 
         // --- LOGIC SINH DROPDOWN TỰ ĐỘNG (ĐA NĂNG) ---
+                // --- LOGIC SINH DROPDOWN TỰ ĐỘNG (ĐA NĂNG) ---
         function populateChapters() {
             const chapterSelect = document.getElementById('chapter-select');
+            // Reset danh sách dropdown Chương về mặc định
             chapterSelect.innerHTML = '<li class="option-item selected" onclick="selectChapter(\'all\', \'-- Tất cả --\')">-- Tất cả --</li>';
+            document.getElementById("chapter-label").innerText = "-- Tất cả --";
+            currentChapterVal = "all";
 
-            if (rawDatabase.length === 0) return;
+            // SỬA BUG Ở ĐÂY: Nếu không có dữ liệu, bắt buộc gọi updateContentOptions để nó dọn sạch dropdown Nội dung
+            if (rawDatabase.length === 0) {
+                updateContentOptions('all');
+                return;
+            }
+
             const uniqueChapters = [...new Set(rawDatabase.map(q => q.chapter))].filter(Boolean);
             uniqueChapters.forEach(chap => {
                 const li = document.createElement("li");
@@ -1181,6 +1190,8 @@
 
             selectChapter('all', '-- Tất cả --');
         }
+
+        
 
         function updateContentOptions(selectedChapter) {
             const contentSelect = document.getElementById("content-select");
@@ -1455,13 +1466,22 @@
             event.target.value = '';
         }
 
+        // --- HÀM XÓA DỮ LIỆU ĐƯỢC CẬP NHẬT ---
         function clearAllData() {
             if (confirm("Bạn có chắc muốn xóa TOÀN BỘ dữ liệu và lịch sử học tập? Hành động này không thể hoàn tác.")) {
+                // Xóa sạch Local Storage
                 localStorage.removeItem('quiz_app_db');
                 localStorage.removeItem('quiz_app_mistakes');
+                localStorage.removeItem('quiz_app_history'); 
+                
+                // Xóa sạch biến tạm trên RAM
                 rawDatabase = [];
                 savedMistakes = [];
-                alert("Đã dọn dẹp sạch sẽ kho dữ liệu!");
+                sessionHistory = []; 
+                
+                alert("Đã dọn dẹp sạch sẽ kho dữ liệu và lịch sử!");
+                
+                // Cập nhật lại UI, lúc này populateChapters sẽ dọn luôn cả 2 dropdown
                 initAppUI();
                 closeModal();
             }
