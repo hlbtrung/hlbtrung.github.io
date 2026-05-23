@@ -1519,54 +1519,88 @@
 
         // --- LOGIC GỌI GEMINI API (SKELETON) ---
         async function processDocumentWithAI() {
-            const apiKey = localStorage.getItem('gemini_api_key');
-            const fileInput = document.getElementById('ai-doc-upload');
-            const btn = document.getElementById('btn-generate-ai');
+    const apiKey = localStorage.getItem('gemini_api_key');
+    const fileInput = document.getElementById('ai-doc-upload');
+    const btn = document.getElementById('btn-generate-ai');
 
-            if (!apiKey) return alert("Vui lòng nhập và lưu Gemini API Key trước!");
-            if (!fileInput.files || fileInput.files.length === 0) return alert("Vui lòng tải lên một tài liệu (PDF, Word, Ảnh...)!");
+    // MÁY CHỦ CLOUDFLARE WORKER CỦA BẠN (Thay bằng link thực tế bạn vừa copy)
+    const WORKER_URL = "https://quiz.trung-huynhengineer.workers.dev/";
 
-            const file = fileInput.files[0];
+    if (!apiKey) return alert("Vui lòng nhập và lưu Gemini API Key trước!");
+    if (!fileInput.files || fileInput.files.length === 0) return alert("Vui lòng tải lên tài liệu (PDF, Word, PPTX...)!");
 
-            // UI Feedback: Đổi trạng thái nút thành loading
-            const originalText = btn.innerHTML;
-            btn.innerHTML = "⏳ Đang phân tích bằng AI... (Có thể mất 1-2 phút)";
-            btn.disabled = true;
-            btn.style.opacity = "0.7";
+    const file = fileInput.files[0];
+    
+    // Giới hạn an toàn (Cloudflare gói free thường giới hạn request size < 20MB)
+    if (file.size > 15 * 1024 * 1024) {
+        return alert("Tài liệu quá lớn! Vui lòng tải lên file nhỏ hơn 15MB.");
+    }
 
-            try {
-                /* === VIẾT LOGIC GỌI API GEMINI Ở ĐÂY ===
-                 1. Đọc file (Base64)
-                 2. Gửi request tới Google Generative AI REST API
-                 3. Parse chuỗi JSON trả về thành Array Javascript
-                */
+    // Giao diện chuyển sang Loading
+    const originalText = btn.innerHTML;
+    btn.innerHTML = "⏳ Hệ thống đang xử lý... (Vui lòng không đóng trang)";
+    btn.disabled = true;
+    btn.style.opacity = "0.7";
 
-                // Dữ liệu giả lập thành công (Bạn sẽ thay thế bằng parsedData từ API)
-                const mockGeneratedData = [];
+    try {
+        const promptText = document.getElementById('ai-prompt').innerText;
 
-                // Đoạn logic xử lý đưa vào Database (giống upload JSON)
-                /*
-                const mode = document.querySelector('input[name="ai_upload_mode"]:checked').value;
-                if(mode === "overwrite") {
-                    rawDatabase = parsedData;
-                    savedMistakes = [];
-                } else {
-                    rawDatabase = [...rawDatabase, ...parsedData];
-                }
-                // ... Cập nhật ID, lưu localStorage, update UI ...
-                */
+        // Đóng gói file và câu lệnh thành FormData
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('prompt', promptText);
 
-                // alert("Tạo câu hỏi thành công!");
-            } catch (error) {
-                console.error("Lỗi AI:", error);
-                alert("Có lỗi xảy ra trong quá trình tạo: " + error.message);
-            } finally {
-                // Phục hồi UI nút bấm
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                btn.style.opacity = "1";
-            }
+        // Bắn request lên Cloudflare Worker
+        const response = await fetch(WORKER_URL, {
+            method: 'POST',
+            headers: {
+                // Giấu API Key vào custom header để gửi an toàn
+                'X-Gemini-Key': apiKey 
+            },
+            body: formData
+        });
+
+        // Nhận kết quả từ Worker
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || "Lỗi không xác định từ Server");
         }
+
+        const parsedData = result.data; // Đây là mảng JSON sạch sẽ trả về từ Worker
+
+        if (!Array.isArray(parsedData) || parsedData.length === 0) {
+            throw new Error("AI trả về kết quả nhưng sai định dạng cấu trúc JSON.");
+        }
+
+        // Lưu vào Local Storage và giao diện
+        const mode = document.querySelector('input[name="ai_upload_mode"]:checked').value;
+        if(mode === "overwrite") {
+            rawDatabase = parsedData;
+            savedMistakes = [];
+        } else {
+            rawDatabase = [...rawDatabase, ...parsedData];
+        }
+
+        rawDatabase.forEach((q, index) => q.id = index + 1);
+        
+        localStorage.setItem('quiz_app_db', JSON.stringify(rawDatabase));
+        localStorage.setItem('quiz_app_mistakes', JSON.stringify(savedMistakes));
+
+        alert(`✨ Tuyệt vời! Đã trích xuất xong tài liệu Word/PowerPoint và nạp vào kho. Hiện có ${rawDatabase.length} câu hỏi.`);
+        initAppUI();
+        closeModal();
+
+    } catch (error) {
+        console.error("LỖI HỆ THỐNG:", error);
+        alert("Có lỗi xảy ra: " + (error.message || "Vui lòng xem chi tiết lỗi trong màn hình F12 Console."));
+    } finally {
+        // Khôi phục nút bấm
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        btn.style.opacity = "1";
+    }
+}
         function openModal() {
             const modal = document.getElementById('upload-modal');
             modal.style.display = 'flex';
