@@ -44,14 +44,13 @@
             max-width: 720px;
             z-index: 1;
         }
-
         .app-wrapper::before {
             content: '';
-            position: absolute;
-            top: -10%;
-            left: -10%;
-            right: -10%;
-            bottom: -10%;
+            position: fixed; /* ĐỔI THÀNH FIXED: Ghim chặt hào quang vào nền màn hình */
+            top: -20%; /* Nới rộng ra thêm một chút để bao phủ nền */
+            left: -20%;
+            right: -20%;
+            bottom: -20%;
             background: var(--gemini-aura);
             filter: blur(120px);
             opacity: 0.15;
@@ -973,31 +972,27 @@
                 font-size: 0.85rem;
             }
         }
-
-        @media (max-width: 600px) {
+    @media (max-width: 600px) {
             body {
-                /* Dùng 100dvh thay cho 100vh để fix lỗi thanh địa chỉ */
-                height: 100dvh; 
-                min-height: unset;
-                overflow: hidden;
-                padding: 0;
-                /* Khóa chặt body để triệt tiêu hoàn toàn hiệu ứng kéo nảy (rubber-banding) */
-                position: fixed; 
-                top: 0;
-                left: 0;
+                display: block; /* Quan trọng: Tắt căn giữa flexbox để Form không bị đẩy ngược lên trời */
+                position: fixed; /* Khóa chết body */
+                top: 0; left: 0;
                 width: 100%;
+                height: 100dvh; /* dvh giúp fix lỗi thanh địa chỉ của Safari */
+                overflow: hidden;
+                background-color: var(--bg-body);
             }
 
             .app-wrapper {
-                /* Cố định chiều cao động */
-                height: 100dvh; 
-                max-height: 100dvh;
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
-                /* Cấm cuộn lan truyền ra ngoài */
-                overscroll-behavior: none; 
-                padding: 10px 10px 30px;
-                box-sizing: border-box; /* Đảm bảo padding không đẩy content tràn ra ngoài */
+                position: absolute;
+                top: 0; left: 0;
+                width: 100%;
+                height: 100dvh;
+                overflow-y: auto; /* Chỉ cho phép cuộn dọc */
+                overflow-x: hidden; /* Quan trọng: Cắt đứt hoàn toàn khả năng cuộn ngang */
+                -webkit-overflow-scrolling: touch; /* Giữ độ mượt khi cuộn trên iOS */
+                overscroll-behavior: none; /* Chặn hiệu ứng nảy cao su */
+                padding: 15px 10px 40px 10px;
             }
 
             #view-all-container {
@@ -1005,8 +1000,10 @@
                 overflow-y: visible;
             }
 
-            #session-status-bar.active~.app-wrapper .main-card {
-                padding-top: 100px;
+            /* Đẩy nội dung xuống một chút khi thanh Timer hiện ra */
+            #session-status-bar.active ~ .app-wrapper .main-card {
+                margin-top: 70px;
+                padding-top: 25px;
             }
         }
         /* TABS STYLING */
