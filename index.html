@@ -976,18 +976,28 @@
 
         @media (max-width: 600px) {
             body {
-                height: 100vh;
+                /* Dùng 100dvh thay cho 100vh để fix lỗi thanh địa chỉ */
+                height: 100dvh; 
                 min-height: unset;
                 overflow: hidden;
                 padding: 0;
+                /* Khóa chặt body để triệt tiêu hoàn toàn hiệu ứng kéo nảy (rubber-banding) */
+                position: fixed; 
+                top: 0;
+                left: 0;
+                width: 100%;
             }
 
             .app-wrapper {
-                max-height: 100vh;
+                /* Cố định chiều cao động */
+                height: 100dvh; 
+                max-height: 100dvh;
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
-                overscroll-behavior: contain;
+                /* Cấm cuộn lan truyền ra ngoài */
+                overscroll-behavior: none; 
                 padding: 10px 10px 30px;
+                box-sizing: border-box; /* Đảm bảo padding không đẩy content tràn ra ngoài */
             }
 
             #view-all-container {
@@ -999,7 +1009,6 @@
                 padding-top: 100px;
             }
         }
-
         /* TABS STYLING */
         .tabs-header {
             display: flex;
