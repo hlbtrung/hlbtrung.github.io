@@ -1401,6 +1401,30 @@
             </div>
         </div>
     </div>
+    <div class="modal-overlay" id="share-link-modal">
+        <div class="modal-card" style="text-align: center; max-width: 400px;">
+            <h2 style="margin-bottom: 10px;">🔗 Chia sẻ thành công!</h2>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
+                Link dưới đây có hiệu lực trong vòng 24 giờ. Gửi link này cho bạn bè để họ ấn vào là tự động tải bộ câu
+                hỏi!
+            </p>
+
+            <div class="input-group">
+                <div class="api-key-container">
+                    <input type="text" id="share-link-input" class="custom-input" readonly
+                        style="text-align: center; font-weight: 500; color: var(--success); font-size: 0.85rem;">
+                </div>
+            </div>
+
+            <div
+                style="display: flex; gap: 10px; margin-top: 20px; border-top: 1px solid var(--border-light); padding-top: 20px;">
+                <button class="liquid-btn btn-secondary liquid-hover" onclick="closeShareModal()"
+                    style="flex: 1; margin:0; font-size: 0.95rem;">Đóng</button>
+                <button class="liquid-btn liquid-hover" id="btn-copy-link" onclick="copyShareLink()"
+                    style="flex: 1; margin:0; font-size: 0.95rem;">📋 Copy Link</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // --- QUẢN LÝ LOCAL STORAGE TRÍ NHỚ ĐA NĂNG ---
@@ -1626,6 +1650,7 @@
         }
         // --- LOGIC CHIA SẺ VÀ TẢI QUIZ ---
         const WORKER_BASE_URL = "https://quiz.trung-huynhengineer.workers.dev";
+        // --- LOGIC TẠO LINK CHIA SẺ & BẬT MODAL ---
         async function shareQuiz() {
             if (rawDatabase.length === 0) return alert("Kho dữ liệu trống, không có gì để chia sẻ!");
 
@@ -1644,8 +1669,16 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    // Dùng prompt để người dùng dễ dàng copy ID
-                    prompt(`Đã tạo link chia sẻ thành công!\nMã này sẽ tự động hủy sau 24 tiếng.\n\nCopy ID bên dưới để gửi cho bạn bè:`, result.shareId);
+                    // Tự động lấy URL hiện tại (VD: https://hlbtrung.github.io/quiz/) và nối thêm param
+                    const currentUrl = window.location.origin + window.location.pathname;
+                    const shareLink = `${currentUrl}?share=${result.shareId}`;
+
+                    // Đẩy link vào input và mở Modal UI của bạn
+                    document.getElementById('share-link-input').value = shareLink;
+                    const modal = document.getElementById('share-link-modal');
+                    modal.style.display = 'flex';
+                    setTimeout(() => modal.classList.add('active'), 10);
+
                 } else {
                     throw new Error(result.error);
                 }
@@ -1655,6 +1688,32 @@
                 btn.innerHTML = originalText;
                 btn.disabled = false;
             }
+        }
+
+        function closeShareModal() {
+            const modal = document.getElementById('share-link-modal');
+            modal.classList.remove('active');
+            setTimeout(() => modal.style.display = 'none', 300);
+        }
+
+        function copyShareLink() {
+            const linkInput = document.getElementById('share-link-input');
+            linkInput.select();
+            linkInput.setSelectionRange(0, 99999); // Hỗ trợ copy trên thiết bị Mobile
+
+            navigator.clipboard.writeText(linkInput.value).then(() => {
+                const btn = document.getElementById('btn-copy-link');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = "Copied!";
+                btn.style.background = "var(--success)";
+
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.style.background = "var(--text-main)";
+                }, 2000);
+            }).catch(err => {
+                alert("Trình duyệt không hỗ trợ copy tự động, vui lòng copy thủ công.");
+            });
         }
 
         async function loadSharedQuiz() {
@@ -2352,25 +2411,79 @@
             initAppUI();
         }
 
-        window.onload = () => {
+        // --- AUTO LOAD LOGIC KHI MỞ TRANG ---
+        window.onload = async () => {
             initAppUI();
             attachLiquidHover();
 
+            // Logic xử lý checkbox auto-show answer cũ của bạn
             const cb = document.getElementById('auto-show-answer');
             if (cb) {
                 autoShowAnswer = cb.checked;
                 cb.addEventListener('change', (e) => {
                     autoShowAnswer = e.target.checked;
                     if (document.getElementById("quiz-area").style.display !== "none") {
-                        if (currentViewMode === 'single') {
-                            loadQuestion();
-                        } else {
-                            renderViewAllMode();
-                        }
+                        if (currentViewMode === 'single') loadQuestion();
+                        else renderViewAllMode();
                     }
                 });
             }
+
+            // ==========================================
+            // KIỂM TRA URL XEM CÓ SHARE ID KHÔNG
+            // ==========================================
+            const urlParams = new URLSearchParams(window.location.search);
+            const shareId = urlParams.get('share');
+
+            if (shareId) {
+                // Xóa ID trên thanh URL cho sạch đẹp nhưng không làm tải lại trang
+                const cleanUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, document.title, cleanUrl);
+
+                // Hỏi người dùng trước khi tải (để tránh vô tình ghi đè dữ liệu cũ của họ)
+                const userConfirm = confirm("🚀 Bạn nhận được một bộ câu hỏi chia sẻ!\n\nBạn có muốn tải dữ liệu này vào máy không?\n- Bấm OK: Ghi đè (Xóa kho cũ, chỉ dùng kho mới).\n- Bấm Cancel: Gộp chung (Giữ kho cũ, thêm kho mới).");
+
+                await handleAutoLoadShare(shareId, userConfirm ? 'overwrite' : 'merge');
+            }
         };
+
+        async function handleAutoLoadShare(shareId, mode) {
+            const startBtn = document.getElementById('start-btn');
+            const originalText = startBtn.innerText;
+            startBtn.innerText = "⏳ Đang tải dữ liệu chia sẻ...";
+            startBtn.disabled = true;
+
+            try {
+                const response = await fetch(`${WORKER_BASE_URL}/load/${shareId.toUpperCase()}`);
+                const result = await response.json();
+
+                if (result.success && Array.isArray(result.data)) {
+                    if (mode === 'overwrite') {
+                        rawDatabase = result.data;
+                        savedMistakes = []; // Đã ghi đè thì xóa luôn lỗi cũ
+                    } else {
+                        rawDatabase = [...rawDatabase, ...result.data];
+                    }
+
+                    // Đánh lại ID cho đồng nhất
+                    rawDatabase.forEach((q, index) => q.id = index + 1);
+
+                    localStorage.setItem('quiz_app_db', JSON.stringify(rawDatabase));
+                    localStorage.setItem('quiz_app_mistakes', JSON.stringify(savedMistakes));
+
+                    alert(`✅ Thành công! Đã nạp ${result.data.length} câu hỏi vào hệ thống.`);
+                    initAppUI(); // Load lại UI hiển thị số câu
+                } else {
+                    throw new Error(result.error || "Mã chia sẻ không tồn tại hoặc đã hết hạn sau 24h.");
+                }
+            } catch (error) {
+                alert("Lỗi khi tải bộ câu hỏi: " + error.message);
+            } finally {
+                startBtn.innerText = "Bắt đầu ôn tập";
+                startBtn.disabled = false;
+                initAppUI();
+            }
+        }
     </script>
 </body>
 
