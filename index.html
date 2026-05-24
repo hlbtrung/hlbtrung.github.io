@@ -471,7 +471,10 @@
         }
 
         input[type="radio"] {
+            -webkit-appearance: none; /* QUAN TRỌNG: Ép Safari/iOS bỏ UI mặc định */
             appearance: none;
+            background-color: transparent; /* Xóa nền xám/đen ẩn của iOS */
+            
             width: 22px;
             height: 22px;
             border: 2px solid #a1a1aa;
@@ -481,8 +484,14 @@
             position: relative;
             transition: all 0.2s;
             flex-shrink: 0;
+            
+            /* Reset lại margin rác mà Safari tự động đôn vào */
+            margin-top: 0; 
+            margin-bottom: 0; 
+            margin-left: 0;
         }
 
+        /* Phần :checked và :checked::after bên dưới bạn vẫn GIỮ NGUYÊN nhé */
         input[type="radio"]:checked {
             border-color: var(--text-main);
         }
@@ -498,7 +507,6 @@
             left: 50%;
             transform: translate(-50%, -50%);
         }
-
         .option-label.selected {
             border-color: var(--text-main);
             background: #f9fafb;
@@ -974,37 +982,191 @@
         }
     @media (max-width: 600px) {
             body {
-                display: block; /* Quan trọng: Tắt căn giữa flexbox để Form không bị đẩy ngược lên trời */
-                position: fixed; /* Khóa chết body */
+                display: block;
+                position: fixed;
                 top: 0; left: 0;
                 width: 100%;
-                height: 100dvh; /* dvh giúp fix lỗi thanh địa chỉ của Safari */
+                height: 100dvh;
                 overflow: hidden;
                 background-color: var(--bg-body);
             }
 
+            /* 1. SỬA LỖI DIALOG: Biến wrapper thành flex để dùng cơ chế margin: auto */
             .app-wrapper {
                 position: absolute;
                 top: 0; left: 0;
                 width: 100%;
                 height: 100dvh;
-                overflow-y: auto; /* Chỉ cho phép cuộn dọc */
-                overflow-x: hidden; /* Quan trọng: Cắt đứt hoàn toàn khả năng cuộn ngang */
-                -webkit-overflow-scrolling: touch; /* Giữ độ mượt khi cuộn trên iOS */
-                overscroll-behavior: none; /* Chặn hiệu ứng nảy cao su */
-                padding: 15px 10px 40px 10px;
+                overflow-y: auto;
+                overflow-x: hidden;
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: none;
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                box-sizing: border-box;
+                transition: padding-top 0.3s ease;
+            }
+
+            /* Cơ chế margin: auto dọc giúp tự động căn giữa khi nội dung ngắn, và tự cuộn từ đỉnh khi nội dung dài */
+            .main-card {
+                width: 100%;
+                max-width: 100%;
+                margin: auto 0; 
+                padding: 28px 20px;
+                border-radius: 28px;
+                box-sizing: border-box;
+            }
+
+            /* Khi bắt đầu làm bài (Status Bar hiện lên), đẩy padding của app xuống để chừa chỗ */
+            #session-status-bar.active ~ .app-wrapper {
+                padding-top: 142px; 
+            }
+            #session-status-bar.active ~ .app-wrapper .main-card {
+                margin-top: 0;
+                margin-bottom: auto; /* Giữ card xếp từ trên xuống khi làm bài */
+            }
+
+            /* 2. QUY HOẠCH THANH STATUS: Dàn rộng full chiều ngang ứng dụng cực sang trọng */
+            #session-status-bar.active {
+                position: fixed;
+                top: 12px;
+                left: 12px;
+                right: 12px;
+                width: auto;
+                min-width: unset;
+                max-width: none;
+                padding: 10px 16px;
+                background: rgba(255, 255, 255, 0.94);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border-radius: 20px;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+                border: 1px solid rgba(255, 255, 255, 0.7);
+                z-index: 1000;
+                
+                /* Dùng CSS Grid chia không gian: Chữ bên trái xếp chồng, Timer nằm gọn bên phải */
+                display: grid;
+                grid-template-columns: 1fr auto;
+                align-items: center;
+                animation: slideInDown 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            }
+
+            .status-chapter {
+                grid-column: 1;
+                grid-row: 1;
+                font-size: 0.75rem;
+                margin-bottom: 2px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .status-content {
+                grid-column: 1;
+                grid-row: 2;
+                font-size: 0.9rem;
+                font-weight: 600;
+                margin-bottom: 0;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .status-timer {
+                grid-column: 2;
+                grid-row: 1 / span 2; /* Chiếm trọn chiều cao cột phải */
+                font-size: 0.85rem;
+                background: rgba(0, 0, 0, 0.05);
+                padding: 6px 12px;
+                border-radius: 99px;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+
+            /* 3. ĐỊNH VỊ LẠI CỤM ĐIỀU KHIỂN: Ghim ngay phía dưới thanh Status */
+            #quiz-controls.active {
+                position: fixed;
+                top: 84px; 
+                left: 12px;
+                right: 12px;
+                width: auto;
+                z-index: 1000;
+                display: flex;
+                flex-direction: row; /* Xếp hàng ngang song song cân đối */
+                justify-content: space-between;
+                align-items: center;
+                gap: 10px;
+                animation: fadeIn 0.4s ease;
+            }
+
+            .view-mode-toggle {
+                background: rgba(255, 255, 255, 0.94);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border-radius: 99px;
+                padding: 4px;
+                border: 1px solid rgba(255, 255, 255, 0.7);
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
+            }
+
+            .toggle-btn {
+                padding: 6px 12px;
+                font-size: 0.75rem;
+                border-radius: 99px;
+            }
+
+            .auto-show-toggle {
+                background: rgba(255, 255, 255, 0.94);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border-radius: 99px;
+                padding: 6px 12px;
+                border: 1px solid rgba(255, 255, 255, 0.7);
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
+            }
+
+            .auto-show-toggle label {
+                font-size: 0.75rem;
+            }
+
+            .auto-show-toggle input[type="checkbox"] {
+                width: 15px;
+                height: 15px;
+            }
+
+            /* Các thành phần UI phụ khác */
+            h1 {
+                font-size: 1.4rem;
+                margin-bottom: 15px;
+            }
+
+            .select-trigger, .liquid-btn {
+                padding: 14px 18px;
+                font-size: 0.95rem;
+            }
+
+            .option-label {
+                padding: 14px 16px;
+                border-radius: 20px;
+                font-size: 0.95rem;
+            }
+
+            .modal-card {
+                padding: 25px 20px;
+                border-radius: 24px;
             }
 
             #view-all-container {
                 max-height: none;
                 overflow-y: visible;
             }
+        }
 
-            /* Đẩy nội dung xuống một chút khi thanh Timer hiện ra */
-            #session-status-bar.active ~ .app-wrapper .main-card {
-                margin-top: 70px;
-                padding-top: 25px;
-            }
+        @keyframes slideInDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
         /* TABS STYLING */
         .tabs-header {
